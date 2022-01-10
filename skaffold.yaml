@@ -1,0 +1,13 @@
+apiVersion: skaffold/v2beta26
+kind: Config
+metadata:
+  name: builtin-support-service
+build:
+  artifacts:
+  - image: cxm-dev.docker.repositories.sap.ondemand.com/cxm/builtin-support-service
+    docker:
+      dockerfile: Dockerfile
+deploy:
+  kubectl:
+    manifests:
+    - k8s/builtin-support-service-dev.yaml

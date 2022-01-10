@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    getambassador.io/config: |
+      ---
+      apiVersion: ambassador/v1
+      kind: Mapping
+      prefix_regex: true
+      prefix: "/sap/c4c/api/v1/builtin-support-service/.*"
+      rewrite: ""
+      name:  builtin-support-service-mapping
+      service:  https://builtin-support-service-svc:8080
+      tls: istio-upstream
+      add_response_headers:
+        Strict-Transport-Security: max-age=63072000; includeSubDomains
+        Content-Security-Policy: default-src 'self' *.cxm-salescloud.com *.webapi.amap.com *.maps.googleapis.com; style-src 'self' 'unsafe-inline' *.cxm-salescloud.com *.webapi.amap.com *.maps.googleapis.com; img-src 'self' *.cxm-salescloud.com *.webapi.amap.com *.maps.googleapis.com
+      cors:
+        origins: "*"
+        methods: POST, GET, PUT, DELETE, PATCH
+        headers: Content-Type, x-sap-crm-token, x-csrf-token
+        max_age: "86400"
+
+  name: builtin-support-service-svc
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+  selector:
+    app: builtin-support-service
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: builtin-support-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: builtin-support-service
+  template:
+    metadata:
+      labels:
+        app: builtin-support-service
+    spec:
+      containers:
+        - image: cxm-dev.docker.repositories.sap.ondemand.com/cxm/builtin-support-service
+          name: builtin-support-service
+          env:
+            - name: spring_profiles_active
+              value: prod
+            - name: builtin_support_service_port
+              value: "8080"
+            - name: rest_path_prefix
+              value: /sap/c4c/api/v1/builtin-support-service/
+            - name: IAM_SVC_HOST
+              value: iam-new-service-svc
+            - name: IAM_SVC_PORT
+              value: '50051'
+          ports:
+            - containerPort: 8080
+            - containerPort: 50051
+      imagePullSecrets:
+        - name: cxm-dev
